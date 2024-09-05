@@ -1,0 +1,11 @@
+{
+  "name": "jpg-to-pdf-converter",
+  "version": "1.0.0",
+  "description": "Convert JPG to PDF using Netlify Functions",
+  "dependencies": {
+    "sharp": "^0.30.5",
+    "pdfkit": "^0.13.0",
+    "stream-buffers": "^3.0.2",
+    "parse-multipart-data": "^1.5.0"
+  }
+}

@@ -1,0 +1,9 @@
+[build]
+  functions = "functions"
+  publish = "."
+
+[functions]
+  node_bundler = "esbuild"
+
+[[plugins]]
+package = "@netlify/plugin-functions-install-core"
