@@ -1,155 +1,31 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JPG to PDF Converter</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            line-height: 1.6;
-            margin: 0;
-            padding: 20px;
-            background-color: #f4f4f4;
-        }
-        .container {
-            max-width: 600px;
-            margin: auto;
-            background: white;
-            padding: 20px;
-            border-radius: 5px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
-        }
-        h1 {
-            text-align: center;
-            color: #333;
-        }
-        #drop-area {
-            border: 2px dashed #ccc;
-            border-radius: 20px;
-            width: 480px;
-            margin: 50px auto;
-            padding: 20px;
-        }
-        #drop-area.highlight {
-            border-color: purple;
-        }
-        p {
-            margin-top: 0;
-        }
-        .button {
-            display: inline-block;
-            padding: 10px;
-            background: #ccc;
-            cursor: pointer;
-            border-radius: 5px;
-            border: 1px solid #ccc;
-        }
-        .button:hover {
-            background: #ddd;
-        }
-        #fileElem {
-            display: none;
-        }
-        #gallery {
-            margin-top: 10px;
-        }
-        #gallery img {
-            width: 150px;
-            margin-bottom: 10px;
-            margin-right: 10px;
-            vertical-align: middle;
-        }
-        #status {
-            margin-top: 10px;
-        }
-    </style>
+    <!-- ... (previous head content) ... -->
 </head>
 <body>
-    <div class="container">
-        <h1>JPG to PDF Converter</h1>
-        <div id="drop-area">
-            <form class="my-form">
-                <p>Upload multiple files with the file dialog or by dragging and dropping images onto the dashed region</p>
-                <input type="file" id="fileElem" multiple accept="image/jpeg">
-                <label class="button" for="fileElem">Select some files</label>
-            </form>
-            <div id="gallery"></div>
-        </div>
-        <div id="status"></div>
-    </div>
+    <!-- ... (previous body content) ... -->
     <script>
-        let dropArea = document.getElementById('drop-area');
-
-        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-            dropArea.addEventListener(eventName, preventDefaults, false)
-        });
-
-        function preventDefaults (e) {
-            e.preventDefault()
-            e.stopPropagation()
-        }
-
-        ['dragenter', 'dragover'].forEach(eventName => {
-            dropArea.addEventListener(eventName, highlight, false)
-        });
-
-        ['dragleave', 'drop'].forEach(eventName => {
-            dropArea.addEventListener(eventName, unhighlight, false)
-        });
-
-        function highlight(e) {
-            dropArea.classList.add('highlight')
-        }
-
-        function unhighlight(e) {
-            dropArea.classList.remove('highlight')
-        }
-
-        dropArea.addEventListener('drop', handleDrop, false)
-
-        function handleDrop(e) {
-            let dt = e.dataTransfer
-            let files = dt.files
-            handleFiles(files)
-        }
-
-        let uploadProgress = []
-        let progressBar = document.getElementById('progress-bar')
-
-        function initializeProgress(numFiles) {
-            uploadProgress = []
-            for(let i = numFiles; i > 0; i--) {
-                uploadProgress.push(0)
-            }
-        }
-
-        function handleFiles(files) {
-            files = [...files]
-            initializeProgress(files.length)
-            files.forEach(uploadFile)
-            files.forEach(previewFile)
-        }
-
-        function previewFile(file) {
-            let reader = new FileReader()
-            reader.readAsDataURL(file)
-            reader.onloadend = function() {
-                let img = document.createElement('img')
-                img.src = reader.result
-                document.getElementById('gallery').appendChild(img)
-            }
-        }
+        // ... (previous script content) ...
 
         function uploadFile(file, i) {
             var formData = new FormData()
             formData.append('file', file)
+            document.getElementById('status').innerHTML = 'Converting...';
             fetch('/.netlify/functions/convert', {
                 method: 'POST',
                 body: formData
             })
-            .then(response => response.blob())
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.blob();
+            })
             .then(blob => {
+                if (blob.size === 0) {
+                    throw new Error('Received empty PDF');
+                }
                 const url = window.URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.style.display = 'none';
@@ -160,15 +36,13 @@
                 window.URL.revokeObjectURL(url);
                 document.getElementById('status').innerHTML = 'Conversion complete! PDF downloaded.';
             })
-            .catch(() => {
-                document.getElementById('status').innerHTML = 'Conversion failed. Please try again.';
-            })
+            .catch((error) => {
+                console.error('Error:', error);
+                document.getElementById('status').innerHTML = `Conversion failed: ${error.message}. Please try again.`;
+            });
         }
 
-        let fileElem = document.getElementById('fileElem');
-        fileElem.addEventListener('change', function() {
-            handleFiles(this.files);
-        });
+        // ... (rest of the script content) ...
     </script>
 </body>
 </html>
