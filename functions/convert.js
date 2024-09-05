@@ -20,8 +20,8 @@ exports.handler = async (event, context) => {
       return { statusCode: 400, body: 'No files uploaded' };
     }
 
-    // Create a PDF document without specifying a font
-    const doc = new PDFDocument({ autoFirstPage: false });
+    // Create a PDF document with no pages and no font
+    const doc = new PDFDocument({ autoFirstPage: false, font: null });
     const writeStream = new streamBuffers.WritableStreamBuffer();
     doc.pipe(writeStream);
 
@@ -35,7 +35,7 @@ exports.handler = async (event, context) => {
             .resize(595, 842, { fit: 'inside' })  // A4 size in points
             .toBuffer();
 
-          doc.addPage().image(image, 0, 0, { fit: [595, 842] });
+          doc.addPage({ size: [595, 842] }).image(image, 0, 0, { fit: [595, 842] });
           pageAdded = true;
           console.log(`Page added for ${part.filename}`);
         } catch (error) {
