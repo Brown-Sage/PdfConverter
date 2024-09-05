@@ -1,74 +1,54 @@
+const multiparty = require('parse-multipart-data');
 const sharp = require('sharp');
 const PDFDocument = require('pdfkit');
-const streamBuffers = require('stream-buffers');
-const multipart = require('parse-multipart-data');
+const { Readable } = require('stream');
 
-exports.handler = async (event, context) => {
-  console.log('Function invoked');
-
-  if (event.httpMethod !== 'POST') {
-    return { statusCode: 405, body: 'Method Not Allowed' };
+module.exports = async (req, res) => {
+  if (req.method !== 'POST') {
+    res.status(405).send('Method Not Allowed');
+    return;
   }
 
   try {
-    const boundary = multipart.getBoundary(event.headers['content-type']);
-    const parts = multipart.parse(Buffer.from(event.body, 'base64'), boundary);
+    // Parse the form data
+    const contentType = req.headers['content-type'];
+    const bodyBuffer = await getRawBody(req);
+    const parts = multiparty.parse(Buffer.from(bodyBuffer), contentType);
 
-    console.log(`Number of parts: ${parts.length}`);
-
-    if (parts.length === 0) {
-      return { statusCode: 400, body: 'No files uploaded' };
+    const images = parts.filter(part => part.filename && part.mimetype.startsWith('image/'));
+    if (images.length === 0) {
+      res.status(400).send('No image files uploaded.');
+      return;
     }
 
-    // Create a PDF document with no pages and no font
-    const doc = new PDFDocument({ autoFirstPage: false, font: null });
-    const writeStream = new streamBuffers.WritableStreamBuffer();
-    doc.pipe(writeStream);
-
-    let pageAdded = false;
-
-    for (const part of parts) {
-      if (part.filename.toLowerCase().endsWith('.jpg') || part.filename.toLowerCase().endsWith('.jpeg')) {
-        console.log(`Processing file: ${part.filename}`);
-        try {
-          const image = await sharp(part.data)
-            .resize(595, 842, { fit: 'inside' })  // A4 size in points
-            .toBuffer();
-
-          doc.addPage({ size: [595, 842] }).image(image, 0, 0, { fit: [595, 842] });
-          pageAdded = true;
-          console.log(`Page added for ${part.filename}`);
-        } catch (error) {
-          console.error(`Error processing image ${part.filename}:`, error);
-        }
-      }
-    }
-
-    if (!pageAdded) {
-      console.log('No valid images were processed');
-      return { statusCode: 400, body: 'No valid images were processed' };
-    }
-
-    doc.end();
-
-    return new Promise((resolve) => {
-      writeStream.on('finish', () => {
-        const pdfBuffer = writeStream.getContents();
-        console.log(`PDF generated. Size: ${pdfBuffer.length} bytes`);
-        
-        resolve({
-          statusCode: 200,
-          headers: {
-            'Content-Type': 'application/pdf',
-            'Content-Disposition': 'attachment; filename=converted.pdf'
-          },
-          body: pdfBuffer.toString('base64'),
-          isBase64Encoded: true
-        });
-      });
+    const pdfDoc = new PDFDocument();
+    const buffers = [];
+    pdfDoc.on('data', buffers.push.bind(buffers));
+    pdfDoc.on('end', () => {
+      const pdfBuffer = Buffer.concat(buffers);
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', 'attachment; filename=converted.pdf');
+      res.status(200).send(pdfBuffer);
     });
+
+    for (const image of images) {
+      const imageBuffer = await sharp(image.data).toBuffer();
+      pdfDoc.image(imageBuffer, { fit: [500, 500], align: 'center', valign: 'center' });
+      pdfDoc.addPage();
+    }
+
+    pdfDoc.end();
   } catch (error) {
-    console.error('Error in function:', error);
-    return { statusCode: 500, body: 'Internal Server Error' };
+    console.error('Conversion error:', error);
+    res.status(500).send('Error converting images to PDF');
   }
 };
+
+function getRawBody(req) {
+  return new Promise((resolve, reject) => {
+    let data = '';
+    req.on('data', chunk => data += chunk);
+    req.on('end', () => resolve(data));
+    req.on('error', err => reject(err));
+  });
+}
