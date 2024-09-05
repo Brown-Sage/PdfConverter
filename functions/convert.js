@@ -20,7 +20,8 @@ exports.handler = async (event, context) => {
       return { statusCode: 400, body: 'No files uploaded' };
     }
 
-    const doc = new PDFDocument();
+    // Create a PDF document without specifying a font
+    const doc = new PDFDocument({ autoFirstPage: false });
     const writeStream = new streamBuffers.WritableStreamBuffer();
     doc.pipe(writeStream);
 
