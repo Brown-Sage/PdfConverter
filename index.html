@@ -1,57 +1,61 @@
 <!DOCTYPE html>
-   <html lang="en">
-   <head>
-       <meta charset="UTF-8">
-       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-       <title>JPG to PDF Converter</title>
-   </head>
-   <body>
-       <h1>JPG to PDF Converter</h1>
-       <input type="file" id="fileInput" accept="image/jpeg" multiple>
-       <button onclick="convertFiles()">Convert</button>
-       <div id="status"></div>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JPG to PDF Converter</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; }
+        h1 { text-align: center; }
+        #status { margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <h1>JPG to PDF Converter</h1>
+    <form id="uploadForm" enctype="multipart/form-data">
+        <input type="file" id="fileInput" accept="image/jpeg" multiple required>
+        <button type="submit">Convert</button>
+    </form>
+    <div id="status"></div>
 
-       <script>
-       function convertFiles() {
-           const fileInput = document.getElementById('fileInput');
-           const status = document.getElementById('status');
-           
-           if (fileInput.files.length === 0) {
-               status.textContent = 'Please select at least one JPG file.';
-               return;
-           }
+    <script>
+        document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const status = document.getElementById('status');
+            const fileInput = document.getElementById('fileInput');
+            const formData = new FormData();
 
-           const formData = new FormData();
-           for (let i = 0; i < fileInput.files.length; i++) {
-               formData.append('file', fileInput.files[i]);
-           }
+            for (let i = 0; i < fileInput.files.length; i++) {
+                formData.append('images', fileInput.files[i]);
+            }
 
-           status.textContent = 'Converting...';
+            status.textContent = 'Converting...';
 
-           fetch('/api/convert', {
-    method: 'POST',
-    body: formData
- })
-           .then(response => {
-               if (!response.ok) throw new Error('Server error');
-               return response.blob();
-           })
-           .then(blob => {
-               const url = URL.createObjectURL(blob);
-               const a = document.createElement('a');
-               a.href = url;
-               a.download = 'converted.pdf';
-               document.body.appendChild(a);
-               a.click();
-               document.body.removeChild(a);
-               URL.revokeObjectURL(url);
-               status.textContent = 'Conversion complete!';
-           })
-           .catch(error => {
-               console.error('Error:', error);
-               status.textContent = 'Conversion failed. Please try again.';
-           });
-       }
-       </script>
-   </body>
-   </html>
+            try {
+                const response = await fetch('/api/convert', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.style.display = 'none';
+                    a.href = url;
+                    a.download = 'converted.pdf';
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    status.textContent = 'Conversion successful! Downloading PDF...';
+                } else {
+                    status.textContent = 'Conversion failed. Please try again.';
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                status.textContent = 'An error occurred. Please try again.';
+            }
+        });
+    </script>
+</body>
+</html>
