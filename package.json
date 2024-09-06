@@ -1,18 +1,12 @@
 {
   "name": "jpg-to-pdf-converter",
   "version": "1.0.0",
-  "description": "Convert JPG to PDF using Vercel Serverless Functions",
-  "dependencies": {
-    "sharp": "^0.32.5",
-    "pdfkit": "^0.13.0",
-    "stream-buffers": "^3.0.2",
-    "parse-multipart-data": "^1.5.0"
-  },
-  "engines": {
-    "node": ">=14.0.0"
-  },
+  "description": "Convert JPG to PDF using client-side JavaScript",
   "scripts": {
     "start": "vercel dev",
     "deploy": "vercel deploy --prod"
+  },
+  "engines": {
+    "node": ">=14.0.0"
   }
 }
