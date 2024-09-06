@@ -8,6 +8,7 @@
         body { font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; }
         h1 { text-align: center; }
         #status { margin-top: 20px; }
+        .error { color: red; }
     </style>
 </head>
 <body>
@@ -37,7 +38,14 @@
                     body: formData
                 });
 
-                if (response.ok) {
+                const contentType = response.headers.get('content-type');
+                if (contentType && contentType.includes('application/json')) {
+                    // It's a JSON response, likely an error
+                    const data = await response.json();
+                    status.textContent = `Error: ${data.error}`;
+                    status.className = 'error';
+                } else if (response.ok) {
+                    // It's a PDF
                     const blob = await response.blob();
                     const url = window.URL.createObjectURL(blob);
                     const a = document.createElement('a');
@@ -48,12 +56,15 @@
                     a.click();
                     window.URL.revokeObjectURL(url);
                     status.textContent = 'Conversion successful! Downloading PDF...';
+                    status.className = '';
                 } else {
                     status.textContent = 'Conversion failed. Please try again.';
+                    status.className = 'error';
                 }
             } catch (error) {
                 console.error('Error:', error);
                 status.textContent = 'An error occurred. Please try again.';
+                status.className = 'error';
             }
         });
     </script>

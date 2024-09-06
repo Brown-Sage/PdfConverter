@@ -5,20 +5,16 @@ const { Readable } = require('stream');
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') {
-    res.status(405).send('Method Not Allowed');
-    return;
+    return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
   try {
     // Parse the form data
-    const contentType = req.headers['content-type'];
-    const bodyBuffer = await getRawBody(req);
-    const parts = multiparty.parse(Buffer.from(bodyBuffer), contentType);
+    const form = await parseForm(req);
+    const files = form.files;
 
-    const images = parts.filter(part => part.filename && part.mimetype.startsWith('image/'));
-    if (images.length === 0) {
-      res.status(400).send('No image files uploaded.');
-      return;
+    if (!files || files.length === 0) {
+      return res.status(400).json({ error: 'No image files uploaded.' });
     }
 
     const pdfDoc = new PDFDocument();
@@ -31,24 +27,37 @@ module.exports = async (req, res) => {
       res.status(200).send(pdfBuffer);
     });
 
-    for (const image of images) {
-      const imageBuffer = await sharp(image.data).toBuffer();
-      pdfDoc.image(imageBuffer, { fit: [500, 500], align: 'center', valign: 'center' });
-      pdfDoc.addPage();
+    for (const file of files) {
+      if (file.mimetype.startsWith('image/')) {
+        const imageBuffer = await sharp(file.data).toBuffer();
+        pdfDoc.addPage().image(imageBuffer, {
+          fit: [500, 500],
+          align: 'center',
+          valign: 'center'
+        });
+      }
     }
 
     pdfDoc.end();
   } catch (error) {
     console.error('Conversion error:', error);
-    res.status(500).send('Error converting images to PDF');
+    res.status(500).json({ error: 'Error converting images to PDF' });
   }
 };
 
-function getRawBody(req) {
+function parseForm(req) {
   return new Promise((resolve, reject) => {
-    let data = '';
-    req.on('data', chunk => data += chunk);
-    req.on('end', () => resolve(data));
-    req.on('error', err => reject(err));
+    const contentType = req.headers['content-type'];
+    let body = '';
+    req.on('data', (chunk) => {
+      body += chunk.toString();
+    });
+    req.on('end', () => {
+      const boundary = contentType.split('boundary=')[1];
+      const parts = multiparty.parse(Buffer.from(body), boundary);
+      const files = parts.filter(part => part.filename && part.mimetype.startsWith('image/'));
+      resolve({ files });
+    });
+    req.on('error', reject);
   });
 }
