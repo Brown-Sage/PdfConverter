@@ -1,0 +1,12 @@
+{
+  "name": "jpg-to-pdf-converter",
+  "version": "1.0.0",
+  "description": "Convert JPG to PDF using client-side JavaScript",
+  "scripts": {
+    "start": "vercel dev",
+    "deploy": "vercel deploy --prod"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}
